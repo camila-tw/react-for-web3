@@ -103,6 +103,11 @@ const BlockchainContextProvider = ({ children }) => {
      * 透過 Web3Provider 將 window.ethereum 做為參數建立一個新的 web3 provider
      * 並將這個新的 web3 provider 設定成 provider 的 state
      */
+   
+    if (!provider) {
+      const provider = new ethers.providers.Web3Provider(window.ethereum)
+      setProvider(provider);
+    }
   }, []);
 
   return (
