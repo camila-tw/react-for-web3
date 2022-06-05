@@ -19,7 +19,23 @@ const ERC721Assignment = () => {
      * 2. 取得目前 block (區塊) 中的 gas fee，並在建立 Contract 物件的時候帶入 gasLimit 參數
      * 參考資料: https://docs.ethers.io/v5/getting-started/#getting-started--contracts
      */
-  }, []);
+    if (!provider) {
+      return;
+    }
+
+    const signer = provider.getSigner();
+
+    provider.getBlock().then((block) => {  
+
+      const contract_ = new ethers.Contract(
+        contractAddress,
+        contractABI,
+        provider,
+        { gasLimit: block.getLimit }
+      ); 
+      setContract(contract_.connect(signer));
+    });
+  }, [provider]);
 
   const [totalSupply, setTotalSupply] = useState();
   useEffect(() => {
@@ -30,7 +46,18 @@ const ERC721Assignment = () => {
      * 如果寫成功，則 <div>目前 Mint 數量: {totalSupply}</div> 處就會顯示 totalSupply 的數值
      * 提示: 透過 ethers.js 取得的 counter 數值為 bigNumber，請想辦法轉換成數字或是字串
      */
-  }, []);
+    if (!contract) {
+      return;
+    }
+
+    const getTotalSupply = async () => {
+      const totalSupply_ = await contract.totalSupply();
+      setTotalSupply(totalSupply_?.toNumber());
+    };
+
+    getTotalSupply();
+
+  }, [contract]);
 
   const [mintPrice, setPrice] = useState();
   useEffect(() => {
@@ -44,7 +71,19 @@ const ERC721Assignment = () => {
      * 2. mintPrice 為 0.01 ether，由於 ether 的數值在智能合約是用 wei 來儲存，會是一個非常大的數字，無法用 js Number 來顯示，
      *    建議透過 ethers.utils.formatEther 來轉換 (會轉換為字串)
      */
-  }, []);
+
+    if (!contract) {
+      return;
+    }
+
+    const getMintPrice = async() => {
+      const mintPrice_ = await contract.mintPrice();
+      setPrice(ethers.utils.formatEther(mintPrice_))
+    };
+
+    getMintPrice();
+
+  }, [contract]);
 
   const [accountBalance, setAccountBalance] = useState();
   useEffect(() => {
@@ -56,9 +95,20 @@ const ERC721Assignment = () => {
      * 如果寫成功，則 <div>我的錢包有的數量: {accountBalance}</div> 處就會顯示 accountBalance 的數值
      * 提示: 透過 ethers.js 取得的 counter 數值為 bigNumber，請想辦法轉換成數字或是字串
      */
-  }, []);
+    if (!contract || !currentAccount) {
+      return;
+    }
 
-  const onMint = () => {
+    const getAccountBalance = async() => {
+      const balanceOf_ = await contract.balanceOf(currentAccount.toString());
+      setAccountBalance(balanceOf_.toNumber())
+    };
+
+    getAccountBalance();
+
+  }, [contract]);
+
+  const onMint = async() => {
     /*
      * 請在此處透過 contract 物件，向智能合約呼叫 mint 方法
      * 並且將目前錢包地址帶入
@@ -67,6 +117,19 @@ const ERC721Assignment = () => {
      *    建議透過 ethers.utils.formatEther 轉換為 gwei
      * 如果寫成功，則點擊 Mint 按鈕時，狐狸錢包會跳出交易資訊
      */
+
+    if (!contract || !currentAccount) {
+      return;
+    }
+
+    console.log("mint price: " + mintPrice);
+
+    const price = (mintPrice) ? ethers.utils.parseEther(mintPrice) : null;
+
+    await contract.mint({
+        from: currentAccount.toString(),
+        value: price
+    });
   };
 
   useEffect(() => {
@@ -78,7 +141,23 @@ const ERC721Assignment = () => {
      * 注意: 由於開發時頁面會重新刷新，會導致 setInterval 無法清除，因此請透過 useEffect 中的 return 清除 setInterval
      * 參考資料: https://developer.mozilla.org/zh-TW/docs/Web/API/setInterval
      */
-  }, []);
+    let interval;
+    if (contract) {
+      interval = window.setInterval(async () => {
+        const totalSupply_ = await contract.totalSupply();
+        setTotalSupply(totalSupply_?.toNumber());
+
+        if (currentAccount) {
+          const balanceOf_ = await contract.balanceOf(currentAccount.toString());
+          setAccountBalance(balanceOf_.toNumber())
+        }
+      }, 1000);
+    }
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [contract]);
 
   return (
     <Layout>
@@ -106,7 +185,15 @@ const ERC721Assignment = () => {
                 注意: 由於 totalSupply 可能為 undefined，請善用 JSX 中的 condition (if / else)
                 參考資料1: https://stackoverflow.com/questions/47287177/how-to-loop-over-a-number-in-react-inside-jsx
                 參考資料2: https://zh-hant.reactjs.org/docs/lists-and-keys.html
-             */}
+             */
+              totalSupply && contract ?
+              [...new Array(+totalSupply)].map((el, index) => <
+                OwnerListItem
+                key={index}
+                tokenId={index}
+                contract={contract} 
+              />) : ""
+             }
           </ul>
         </div>
       </div>
@@ -126,7 +213,15 @@ const OwnerListItem = ({ tokenId, contract }) => {
      * 並且儲存上方的 ownerAddress state 中
      * 如果寫成功，則 {ownerAddress} 處就會顯示 ownerAddress 的數值
      */
-  }, []);
+    const findOwner = async() => {
+      const ownerAddress = await contract.ownerOf(tokenId);
+      setOwnerAddress(ownerAddress)
+    };
+
+    if (contract && tokenId != undefined) {
+      findOwner();
+    }
+  }, [contract, tokenId]);
 
   return (
     <li>
