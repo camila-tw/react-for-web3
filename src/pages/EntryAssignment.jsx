@@ -8,7 +8,7 @@ const contractAddress = "0xa680F60AD58000F87Cdf9EA94A5c68ac8583c6EB";
 const contractABI = [];
 
 const EntryAssignment = () => {
-  const { currentAccount, provider } = useContext(BlockchainContext);
+  const { currentAccount, provider, messageTip } = useContext(BlockchainContext);
   const [contract, setContract] = useState();
   useEffect(() => {
     /*
@@ -56,6 +56,7 @@ const EntryAssignment = () => {
       <h1>基礎作業: Counter</h1>
 
       <div>
+        <div>{messageTip}</div>
         <div>錢包地址：{currentAccount}</div>
         <div>鏈上資料:</div>
         <div className="my-3">
